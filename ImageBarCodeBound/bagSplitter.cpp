@@ -461,11 +461,30 @@ std::string outputBarcodeAndImgPathJSON(std::map<std::string, std::pair<std::str
 	return GetJsonString(root);
 }
 
-int bindImageAndBarCode(std::string strJSONIn, std::string & strJSONOut) {
+int freeJSONMemory(char ** ppszJSONOut)
+{
+	if (NULL == ppszJSONOut)
+	{
+		return -1;
+	}
+	delete[] ppszJSONOut[0];
+
+	return 0;
+}
+
+int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {//	std::string & strJSONOut
+	if (NULL == pszJSONIn)
+	{
+		return -16;
+	}
+	if (NULL == ppszJSONOut)
+	{
+		return -17;
+	}
 	int nImgStitchDirection;
 	std::vector<std::string > vecImagePath;
 	std::map<Point, std::string, PointComparer> mapBarcodes;
-	if (!parseBarcodeAndImagePathJSON(nImgStitchDirection, vecImagePath, mapBarcodes, strJSONIn))
+	if (!parseBarcodeAndImagePathJSON(nImgStitchDirection, vecImagePath, mapBarcodes, pszJSONIn))
 	{
 		return -1;
 	}
@@ -524,7 +543,9 @@ int bindImageAndBarCode(std::string strJSONIn, std::string & strJSONOut) {
 		mapBarcodeAndImgPath[strBarcode] = std::pair<std::string, std::string>(szImgName, szImgFullPath);
 	}
 
-	strJSONOut = outputBarcodeAndImgPathJSON(mapBarcodeAndImgPath);
+	std::string strJSONOut = outputBarcodeAndImgPathJSON(mapBarcodeAndImgPath);
+	ppszJSONOut[0] = new char [strJSONOut.length() + 1]();
+	memcpy(ppszJSONOut[0], strJSONOut.c_str(), strJSONOut.length());
 
 	return 0;
 }

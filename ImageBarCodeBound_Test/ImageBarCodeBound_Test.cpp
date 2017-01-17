@@ -185,23 +185,23 @@ enum BagOrder
 };
 
 int main(int argc, char * argv[]) {
-	std::string strTest = "{"
+	const char strTest[] = "{"
 		"    \"direction\": 0,"
 		"    \"barcodes\": ["
 		"        {"
-		"            \"barcode\": \"1234567891\","
+		"            \"barcode\": \"1234567891测试\","
 		"            \"abscissa\": 600,"
 		"            \"ordinate\": 800"
 		"        },"
 		"        {"
-		"            \"barcode\": \"1234567892\","
+		"            \"barcode\": \"1234567892中文\","
 		"            \"abscissa\": 700,"
 		"            \"ordinate\": 900"
 		"        }"
 		"    ],"
 		"    \"images\": ["
 		"        {"
-		"            \"imageName\": \"aaa.png\","
+		"            \"imageName\": \"aaa.png很好\","
 		"            \"imagePath\": \"D:\\\\SinoCloud\\\\ImageBarCodeBound\\\\tsw_2016-12-08_072024929_23655.jpg\""
 		//"        },"
 		//"        {"
@@ -210,9 +210,10 @@ int main(int argc, char * argv[]) {
 		"        }"
 		"    ]"
 		"}";
-	std::string strJSONOut;
-	int nRet = bindImageAndBarCode(strTest, strJSONOut);
-	std::cout << strJSONOut;
+	char * pszJSONOut;
+	int nRet = bindImageAndBarCode(strTest, & pszJSONOut);
+	std::cout << pszJSONOut << std::endl;
+	freeJSONMemory(& pszJSONOut);
 	if (argc > 1)
 	{
 		batchProcess(argv[1], "./bags", RightAhead);

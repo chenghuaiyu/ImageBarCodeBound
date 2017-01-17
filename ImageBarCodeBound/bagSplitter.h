@@ -6,7 +6,10 @@
 extern "c" {
 #endif
 
-	int bindImageAndBarCode(std::string strJSONIn, std::string & strJSONOut);
+	int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut);
+	//int bindImageAndBarCode(const char * pszJSONIn, std::string & strJSONOut);
+	int freeJSONMemory(char ** ppszJSONOut);
+
 #ifdef _cplusplus
 }
 #endif
