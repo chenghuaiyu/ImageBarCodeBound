@@ -6,9 +6,7 @@
 extern "c" {
 #endif
 
-//bool splitBags(std::vector<cv::Mat> vm, int nImgStitchDirection);
-	bool bindImageAndBarCode(std::vector<cv::Mat> & vBags, std::vector<cv::Mat> vm, int nImgStitchDirection, std::vector<cv::Point> vp);
-
+	int bindImageAndBarCode(std::string strJSONIn, std::string & strJSONOut);
 #ifdef _cplusplus
 }
 #endif

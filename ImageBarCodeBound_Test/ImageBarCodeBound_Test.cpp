@@ -153,17 +153,17 @@ void batchProcess(const char * pszImageDir, const char * pszDstImageDir, int nIm
 	for (vector<string>::iterator it = fileList.begin(); it != fileList.end(); it++) {
 		printf(">>> processing %s\n", it->c_str());
 		cv::Mat m = cv::imread(*it);
-		//m = m(cv::Rect(0, 0, 1730, 1048));
+		m = m(cv::Rect(0, 0, 1730, 1048));
 
 		std::vector<cv::Mat> vm;
 		vm.push_back(m);
 		std::vector<cv::Point> vp;
 		std::vector<cv::Mat> vBags;
-		bool bRet = bindImageAndBarCode(vBags, vm, nImgBagDirection, vp);
-		if (! bRet)
-		{
-			continue;
-		}
+		//bool bRet = splitImageBagAndBindBarCode(vBags, vm, nImgBagDirection, vp);
+		//if (! bRet)
+		//{
+		//	continue;
+		//}
 
 		string strFile = replacePathSeparator(it->c_str());
 		strFile = "/" + strFile;
@@ -185,6 +185,34 @@ enum BagOrder
 };
 
 int main(int argc, char * argv[]) {
+	std::string strTest = "{"
+		"    \"direction\": 0,"
+		"    \"barcodes\": ["
+		"        {"
+		"            \"barcode\": \"1234567891\","
+		"            \"abscissa\": 600,"
+		"            \"ordinate\": 800"
+		"        },"
+		"        {"
+		"            \"barcode\": \"1234567892\","
+		"            \"abscissa\": 700,"
+		"            \"ordinate\": 900"
+		"        }"
+		"    ],"
+		"    \"images\": ["
+		"        {"
+		"            \"imageName\": \"aaa.png\","
+		"            \"imagePath\": \"D:\\\\SinoCloud\\\\ImageBarCodeBound\\\\tsw_2016-12-08_072024929_23655.jpg\""
+		//"        },"
+		//"        {"
+		//"            \"imageName\": \"bbb.png\","
+		//"            \"imagePath\": \"D:/bbb.png\""
+		"        }"
+		"    ]"
+		"}";
+	std::string strJSONOut;
+	int nRet = bindImageAndBarCode(strTest, strJSONOut);
+	std::cout << strJSONOut;
 	if (argc > 1)
 	{
 		batchProcess(argv[1], "./bags", RightAhead);
@@ -206,7 +234,8 @@ int main(int argc, char * argv[]) {
 	const char * pszBarLogFile = "../barcode_res.log";
 	//const char * pcszImageDir = "D:\\SinoCloud\\ImageBarCodeBound\\";
 	//const char * pcszImageDir = "F:/images/scene";
-	const char * pcszImageDir = "F:/images/À„∑®≤‚ ‘Õº";
+	//const char * pcszImageDir = "F:/images/À≥∑·/À„∑®≤‚ ‘Õº";
+	const char * pcszImageDir = "F:/images/À≥∑·/«–Õº”–Œ Ã‚µƒÕº∆¨";
 
 
 	//const char * pszImageDir = argv[1];
