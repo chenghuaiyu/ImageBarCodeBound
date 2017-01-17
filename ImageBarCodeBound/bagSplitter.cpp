@@ -1,10 +1,58 @@
-#include "bagSplitter.h"
 #include <sstream>
+#include <direct.h>
+#include <sys/stat.h>
+#include <windows.h>
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/document.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
+#include "bagSplitter.h"
+
 using namespace cv;
+using namespace rapidjson;
 
 #ifdef _DEBUG
 #define SAVE_IMAGE
 #endif
+
+const char szLabelDirection[] = "direction";
+const char szLabelBarcodes[] = "barcodes";
+const char szLabelBarcode[] = "barcode";
+const char szLabelAbscissa[] = "abscissa";
+const char szLabelOrdinate[] = "ordinate";
+const char szLabelImages[] = "images";
+const char szLabelImageName[] = "imageName";
+const char szLabelImagePath[] = "imagePath";
+const char szLabelStatus[] = "status";
+
+const char szDstImgDir[] = "d:/sf";
+
+bool DirectoryExists(const char* pzPath) {
+	//LOG(INFO) << "DirectoryExists(): " << pzPath;
+	if (pzPath == NULL)
+		return false;
+	size_t n = strlen(pzPath) - 1;
+	size_t ind = n;
+	while (ind > 0 && (pzPath[ind] == '/' || pzPath[ind] == '\\')) {
+		ind--;
+	}
+	char* pszPathNoSlash;
+	char szTemp[_MAX_PATH] = {};
+	if (ind < n) {
+		strncpy(szTemp, pzPath, ind + 1);
+		pszPathNoSlash = szTemp;
+	}
+	else {
+		pszPathNoSlash = (char*)pzPath;
+	}
+	struct _stat st;
+	int nRet = _stat(pszPathNoSlash, &st);
+	if (nRet == 0)
+		if ((st.st_mode & _S_IFDIR) != 0)
+			return true;
+	return false;
+}
 
 cv::Mat stitchImageRight(std::vector<cv::Mat> vm) {
 	Mat m;
@@ -119,13 +167,23 @@ bool splitBags(std::vector<cv::Mat>& vecBags, cv::Mat m, int nImgMovDirection) {
 #ifdef SAVE_IMAGE
 	imwrite("gray.png", mGray);
 #endif
-	const int nGrayThreshOffset = -5;
+	const int nGrayThreshOffset = -6;
 	int nGrayThresh = getGrayThresh(mGray);
 	Mat mBin;
 	GaussianBlur(mGray, mGray, Size(5, 5), 0);
 	threshold(mGray, mBin, nGrayThresh + nGrayThreshOffset, 255, CV_THRESH_BINARY);
 #ifdef SAVE_IMAGE
 	imwrite("bin.png", mBin);
+#endif
+
+	int erosion_type = MORPH_RECT;
+	int erosion_size = 1;
+	Mat element = getStructuringElement(erosion_type,
+		Size(2 * erosion_size + 1, 2 * erosion_size + 1),
+		Point(erosion_size, erosion_size));
+	erode(mBin, mBin, element);
+#ifdef SAVE_IMAGE
+	imwrite("binErode.png", mBin);
 #endif
 
 	std::vector<std::vector<cv::Point> > contours;
@@ -135,6 +193,7 @@ bool splitBags(std::vector<cv::Mat>& vecBags, cv::Mat m, int nImgMovDirection) {
 	cv::findContours(mBinInv, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
 	const int contourLenThresh = 50;
+	const int contourLenThresh2 = 20;
 	const int contourAreaThresh = 400;
 	std::vector<std::vector<cv::Point> > contourFiltered;
 	std::vector<cv::Rect> vecBagRect;
@@ -146,6 +205,10 @@ bool splitBags(std::vector<cv::Mat>& vecBags, cv::Mat m, int nImgMovDirection) {
 		std::vector<cv::Point> contour = contours.at(idx);
 		Rect rc = boundingRect(contour);
 		if (max(rc.height, rc.width) < contourLenThresh)
+		{
+			continue;
+		}
+		if (min(rc.height, rc.width) < contourLenThresh2)
 		{
 			continue;
 		}
@@ -229,19 +292,113 @@ bool splitBags(std::vector<cv::Mat>& vecBags, cv::Mat m, int nImgMovDirection) {
 	return true;
 }
 
+struct PointComparer
+{
+	bool operator()(const Point & a, const Point & b) const
+	{
+		return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+	}
+};
 
+bool parseBarcodeAndImagePathJSON(int & nDirection, std::vector<std::string > & vecImagePath, std::map<Point, std::string, PointComparer> & mapBarcodes, std::string strJSON) {
+	Document document;
+	//char * writable = new char[strJSON.size() + 1];
+	//std::copy(strJSON.begin(), strJSON.end(), writable);
+	//writable[strJSON.size()] = '\0'; // don't forget the terminating 0
+	//if (document.Parse<0>(writable).HasParseError())
+	if (document.Parse<0>(strJSON.c_str()).HasParseError()) {
+		return false;
+	}
 
+	assert(document.HasMember(szLabelDirection));
+	if (!document.HasMember(szLabelDirection))
+	{
+		return false;
+	}
+	assert(document[szLabelDirection].IsInt());
+	if (! document[szLabelDirection].IsInt())
+	{
+		return false;
+	}
+	nDirection = document[szLabelDirection].GetInt();
 
-bool bindImageAndBarCode(std::vector<cv::Mat> & vBags, std::vector<cv::Mat> vm, int nImgStitchDirection, std::vector<cv::Point> vp) {
+	if (!document.HasMember(szLabelBarcodes))
+	{
+		return false;
+	}
+	if (!document[szLabelBarcodes].IsArray())
+	{
+		return false;
+	}
+	rapidjson::Value & barcodes = document[szLabelBarcodes];
+	for (SizeType i = 0; i < barcodes.Size(); i++) {
+		if (!barcodes[i].HasMember(szLabelBarcode))
+		{
+			return false;
+		}
+		if (!barcodes[i][szLabelBarcode].IsString())
+		{
+			return false;
+		}
+		const char * pszBarcode = barcodes[i][szLabelBarcode].GetString();
+		
+		if (!barcodes[i].HasMember(szLabelAbscissa))
+		{
+			return false;
+		}
+		if (!barcodes[i][szLabelAbscissa].IsInt())
+		{
+			return false;
+		}
+		int nX = barcodes[i][szLabelAbscissa].GetInt();
+
+		if (!barcodes[i].HasMember(szLabelOrdinate))
+		{
+			return false;
+		}
+		if (!barcodes[i][szLabelOrdinate].IsInt())
+		{
+			return false;
+		}
+		int nY = barcodes[i][szLabelOrdinate].GetInt();
+		Point pt = Point(nX, nY);
+
+		if (mapBarcodes.count(pt) > 0)
+		{
+			return false;
+		}
+		mapBarcodes[pt] = pszBarcode;
+	}
+
+	rapidjson::Value & images = document[szLabelImages];
+	for (SizeType i = 0; i < images.Size(); i++) {
+		if (!images[i].HasMember(szLabelImagePath))
+		{
+			return false;
+		}
+		if (!images[i][szLabelImagePath].IsString())
+		{
+			return false;
+		}
+		const char * pszImagePath = images[i][szLabelImagePath].GetString();
+		
+		vecImagePath.push_back(pszImagePath);
+	}
+
+	return true;
+}
+
+bool splitImageBagAndBindBarCode(std::map<Point, cv::Mat, PointComparer> & mapBag,std::vector<cv::Mat> vm, int nImgStitchDirection, std::vector<cv::Point> vp) {
 	Mat m = stitchImage(vm, nImgStitchDirection);
+	if (m.empty())
+	{
+		return false;
+	}
 #ifdef SAVE_IMAGE
 	imwrite("stitch.png", m);
 #endif
-//	m = stitchImage(vm, 0);
-//#ifdef SAVE_IMAGE
-//	imwrite("stitch2.png", m);
-//#endif
 
+	std::vector<cv::Mat> vBags;
 	bool bRet = splitBags(vBags, m, nImgStitchDirection);
 #ifdef SAVE_IMAGE
 	for (size_t idx = 0; idx < vBags.size(); idx++) {
@@ -251,6 +408,123 @@ bool bindImageAndBarCode(std::vector<cv::Mat> & vBags, std::vector<cv::Mat> vm, 
 	}
 #endif
 
+	for (size_t idx = 0; idx < min(vBags.size(), vp.size()); idx++) {
+		mapBag[vp.at(idx)] = vBags.at(idx);
+	}
+
 	return bRet;
 	//return true;
+}
+
+rapidjson::Value CreateResult(rapidjson::Document & document) {
+	rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+	rapidjson::Value root(rapidjson::kObjectType);
+	root.AddMember(szLabelStatus, 0, allocator);
+	rapidjson::Value imageArray(rapidjson::kArrayType);
+	root.AddMember(szLabelBarcodes, imageArray, allocator);
+
+	return root;
+}
+
+std::string GetJsonString(rapidjson::Value &root)
+{
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	root.Accept(writer);
+	std::string reststring = buffer.GetString();
+	return reststring;
+}
+
+std::string outputBarcodeAndImgPathJSON(std::map<std::string, std::pair<std::string, std::string>> & mapBarcodeAndImgPath) {
+	rapidjson::Document document;
+	rapidjson::Value root = CreateResult(document);
+	rapidjson::Value & barcodeArray = root[szLabelBarcodes];
+	rapidjson::Document::AllocatorType & allocator = document.GetAllocator();
+	for (std::map<std::string, std::pair<std::string, std::string>>::iterator iter = mapBarcodeAndImgPath.begin(); iter != mapBarcodeAndImgPath.end(); ++iter)
+	{
+		rapidjson::Value object(rapidjson::kObjectType);
+		rapidjson::Value vBarcode(kStringType);
+		std::string strBarcode = iter->first;
+		vBarcode.SetString(strBarcode.c_str(), allocator);
+		object.AddMember(szLabelBarcode, vBarcode, allocator);
+
+		rapidjson::Value vImageTitle(kStringType);
+		vImageTitle.SetString(iter->second.first.c_str(), allocator);
+		object.AddMember(szLabelImageName, vImageTitle, allocator);
+		rapidjson::Value vImagePath(kStringType);
+		vImagePath.SetString(iter->second.second.c_str(), allocator);
+		object.AddMember(szLabelImagePath, vImagePath, allocator);
+
+		barcodeArray.PushBack(object, allocator);
+	}
+
+	return GetJsonString(root);
+}
+
+int bindImageAndBarCode(std::string strJSONIn, std::string & strJSONOut) {
+	int nImgStitchDirection;
+	std::vector<std::string > vecImagePath;
+	std::map<Point, std::string, PointComparer> mapBarcodes;
+	if (!parseBarcodeAndImagePathJSON(nImgStitchDirection, vecImagePath, mapBarcodes, strJSONIn))
+	{
+		return -1;
+	}
+	std::vector<cv::Mat> vm;
+	for (size_t idx = 0; idx < vecImagePath.size(); idx++)
+	{
+		cv::Mat m = imread(vecImagePath.at(idx));
+		if (m.empty())
+		{
+			return -2;
+		}
+		vm.push_back(m);
+	}
+
+	std::vector<cv::Point> vp;
+	for (std::map<Point, std::string, PointComparer>::iterator iter = mapBarcodes.begin(); iter != mapBarcodes.end(); ++iter)
+	{
+		vp.push_back(iter->first);
+	}
+	std::map<Point, cv::Mat, PointComparer> mapBag;
+	bool bRet = splitImageBagAndBindBarCode(mapBag, vm, nImgStitchDirection, vp);
+
+	std::map<std::string, std::pair<std::string, std::string>> mapBarcodeAndImgPath;
+	_mkdir(szDstImgDir);
+	if (! DirectoryExists(szDstImgDir))
+	{
+		return -3;
+	}
+
+	for (std::map<Point, cv::Mat, PointComparer>::iterator iter = mapBag.begin(); iter != mapBag.end(); ++iter)
+	{
+		Point pt = iter->first;
+		std::string strBarcode = mapBarcodes[pt];
+
+		SYSTEMTIME	curr_tm = {};
+		GetLocalTime(& curr_tm);
+		char szDate[_MAX_PATH] = {};
+		sprintf_s(szDate, _MAX_PATH, "%d-%02d-%02d", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay);
+
+		char szImgName[_MAX_PATH] = {};
+		sprintf_s(szImgName, _MAX_PATH, "sf_%d-%02d-%02d_%02d%02d%02d%03d_%d.png", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay, curr_tm.wHour, curr_tm.wMinute, curr_tm.wSecond, curr_tm.wMilliseconds, rand());
+		char szImgFullPath[256] = {};
+		sprintf_s(szImgFullPath, 256, "%s\\%s", szDstImgDir, szDate);
+		_mkdir(szImgFullPath);
+		if (!DirectoryExists(szDstImgDir))
+		{
+			return -4;
+		}
+		sprintf_s(szImgFullPath, 256, "%s\\%s\\%s", szDstImgDir, szDate, szImgName);
+		cv::Mat m = iter->second;
+		if (! imwrite(szImgFullPath, m))
+		{
+			return -5;
+		}
+
+		mapBarcodeAndImgPath[strBarcode] = std::pair<std::string, std::string>(szImgName, szImgFullPath);
+	}
+
+	strJSONOut = outputBarcodeAndImgPathJSON(mapBarcodeAndImgPath);
+
+	return 0;
 }
