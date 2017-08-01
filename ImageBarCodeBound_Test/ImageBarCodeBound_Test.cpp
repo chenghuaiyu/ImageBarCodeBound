@@ -185,33 +185,38 @@ enum BagOrder
 };
 
 int main(int argc, char * argv[]) {
-	const char strTest[] = "{"
-		"    \"direction\": 0,"
-		"    \"barcodes\": ["
-		"        {"
-		"            \"barcode\": \"1234567891测试\","
-		"            \"abscissa\": 600,"
-		"            \"ordinate\": 800"
-		"        },"
-		"        {"
-		"            \"barcode\": \"1234567892中文\","
-		"            \"abscissa\": 700,"
-		"            \"ordinate\": 900"
-		"        }"
-		"    ],"
-		"    \"images\": ["
-		"        {"
-		"            \"imageName\": \"aaa.png很好\","
-		"            \"imagePath\": \"D:\\\\SinoCloud\\\\ImageBarCodeBound\\\\tsw_2016-12-08_072024929_23655.jpg\""
-		//"        },"
-		//"        {"
-		//"            \"imageName\": \"bbb.png\","
-		//"            \"imagePath\": \"D:/bbb.png\""
-		"        }"
-		"    ]"
-		"}";
+	//const char strTest[] = "{"
+	//	"    \"direction\": 0,"
+	//	"    \"barcodes\": ["
+	//	"        {"
+	//	"            \"barcode\": \"1234567891测试\","
+	//	"            \"abscissa\": 600,"
+	//	"            \"ordinate\": 800"
+	//	"        },"
+	//	"        {"
+	//	"            \"barcode\": \"1234567892中文\","
+	//	"            \"abscissa\": 700,"
+	//	"            \"ordinate\": 900"
+	//	"        }"
+	//	"    ],"
+	//	"    \"images\": ["
+	//	"        {"
+	//	"            \"imageName\": \"aaa.png很好\","
+	//	"            \"imagePath\": \"D:\\\\SinoCloud\\\\ImageBarCodeBound\\\\tsw_2016-12-08_072024929_23655.jpg\""
+	//	//"        },"
+	//	//"        {"
+	//	//"            \"imageName\": \"bbb.png\","
+	//	//"            \"imagePath\": \"D:/bbb.png\""
+	//	"        }"
+	//	"    ]"
+	//	"}";
+	//const char strTest[] = "{\"direction\":0,\"barcodes\":[{\"barcode\":\"339124620817T\",\"abscissa\":252,\"ordinate\":2275},{\"barcode\":\"950196023377\",\"abscissa\":322,\"ordinate\":2612}],\"images\":[{\"imageName\":\"20170427171715.jpg\",\"imagePath\":\"F:/images/顺丰/20170427/20170427171715.jpg\"}]}";
+	const char strTest[] = "{\"bagIgnoreWidthLessThan\":0,\"cutImageBottomNoise\":0,\"direction\":0,\"barcodes\":[{\"barcode\":\"950196023331\",\"abscissa\":366,\"ordinate\":2211},{\"barcode\":\"950196023386\",\"abscissa\":372,\"ordinate\":2421}],\"images\":[{\"imageName\":\"20170427174710.jpg\",\"imagePath\":\"F:/images/顺丰/20170427/20170427174710.jpg\"}]}";
+	//const char strTest[] = "";
+
+	const char json[] = "{\"direction\":0,\"barcodes\":[{\"barcode\":\"TX293203741QC\",\"abscissa\":738,\"ordinate\":1750},{\"barcode\":\"353426050960G\",\"abscissa\":526,\"ordinate\":2306}],\"images\":[{\"imageName\":\"20170425102856.jpg\",\"imagePath\":\"D:/resources/files/xrayPhotos/nodeal/20170425/20170425102856.jpg\"}]}";
 	char * pszJSONOut;
-	int nRet = bindImageAndBarCode(strTest, & pszJSONOut);
+	int nRet = bindImageAndBarCode(strTest, &pszJSONOut);
 	std::cout << pszJSONOut << std::endl;
 	freeJSONMemory(& pszJSONOut);
 	if (argc > 1)

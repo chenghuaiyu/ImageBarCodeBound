@@ -25,8 +25,18 @@ const char szLabelImages[] = "images";
 const char szLabelImageName[] = "imageName";
 const char szLabelImagePath[] = "imagePath";
 const char szLabelStatus[] = "status";
+const char szLabelCutBottomNoise[] = "cutImageBottomNoise";
+const char szLabelBagIgnoreWidthLessThan[] = "bagIgnoreWidthLessThan";
 
 const char szDstImgDir[] = "d:/sf";
+
+struct IBCBConf {
+	int nImgStitchDirection;
+	BOOL bCutBottomNoise;
+	int nBagIgnoreWidthLessThan;
+
+	int nReserved;
+};
 
 bool DirectoryExists(const char* pzPath) {
 	//LOG(INFO) << "DirectoryExists(): " << pzPath;
@@ -300,7 +310,7 @@ struct PointComparer
 	}
 };
 
-bool parseBarcodeAndImagePathJSON(int & nDirection, std::vector<std::string > & vecImagePath, std::map<Point, std::string, PointComparer> & mapBarcodes, std::string strJSON) {
+bool parseBarcodeAndImagePathJSON(IBCBConf & conf, std::vector<std::string > & vecImagePath, std::map<Point, std::string, PointComparer> & mapBarcodes, std::string strJSON) {
 	Document document;
 	//char * writable = new char[strJSON.size() + 1];
 	//std::copy(strJSON.begin(), strJSON.end(), writable);
@@ -320,7 +330,29 @@ bool parseBarcodeAndImagePathJSON(int & nDirection, std::vector<std::string > & 
 	{
 		return false;
 	}
-	nDirection = document[szLabelDirection].GetInt();
+	conf.nImgStitchDirection = document[szLabelDirection].GetInt();
+
+	conf.bCutBottomNoise = 0;
+	if (document.HasMember(szLabelCutBottomNoise))
+	{
+		assert(document[szLabelCutBottomNoise].IsInt());
+		if (!document[szLabelCutBottomNoise].IsInt())
+		{
+			return false;
+		}
+		conf.bCutBottomNoise = document[szLabelCutBottomNoise].GetInt();
+	}
+
+	conf.nBagIgnoreWidthLessThan = 0;
+	if (document.HasMember(szLabelBagIgnoreWidthLessThan))
+	{
+		assert(document[szLabelBagIgnoreWidthLessThan].IsInt());
+		if (!document[szLabelBagIgnoreWidthLessThan].IsInt())
+		{
+			return false;
+		}
+		conf.nBagIgnoreWidthLessThan = document[szLabelBagIgnoreWidthLessThan].GetInt();
+	}
 
 	if (!document.HasMember(szLabelBarcodes))
 	{
@@ -388,10 +420,9 @@ bool parseBarcodeAndImagePathJSON(int & nDirection, std::vector<std::string > & 
 	return true;
 }
 
-bool splitImageBagAndBindBarCode(std::map<Point, cv::Mat, PointComparer> & mapBag,std::vector<cv::Mat> vm, int nImgStitchDirection, std::vector<cv::Point> vp) {
+bool splitImageBagAndBindBarCode(std::map<Point, cv::Mat, PointComparer> & mapBag,std::vector<cv::Mat> vm, int nImgStitchDirection, std::vector<cv::Point> vp, int nBagIgnoreWhenWidthLessThan) {
 	Mat m = stitchImage(vm, nImgStitchDirection);
-	if (m.empty())
-	{
+	if (m.empty()) {
 		return false;
 	}
 #ifdef SAVE_IMAGE
@@ -407,13 +438,28 @@ bool splitImageBagAndBindBarCode(std::map<Point, cv::Mat, PointComparer> & mapBa
 		imwrite(ss.str(), vBags.at(idx));
 	}
 #endif
+	if (nBagIgnoreWhenWidthLessThan > 0 && vBags.size() > vp.size()) {
+		for (size_t idx = vBags.size() -1; idx >= 0; idx--) {
+			if (vBags.at(idx).cols < nBagIgnoreWhenWidthLessThan) {
+				vBags.erase(vBags.begin() + idx);
+			}
+		}
+	}
 
+	if (vBags.size() != vp.size()) {
+		for (size_t idx = 0; idx < vp.size(); idx++) {
+			mapBag[vp.at(idx)] = m;
+		}
+
+		return false;
+	}
+
+	std::sort(vp.begin(), vp.end(), [](cv::Point a, cv::Point b) -> bool {return a.y < b.y; });
 	for (size_t idx = 0; idx < min(vBags.size(), vp.size()); idx++) {
 		mapBag[vp.at(idx)] = vBags.at(idx);
 	}
 
 	return bRet;
-	//return true;
 }
 
 rapidjson::Value CreateResult(rapidjson::Document & document) {
@@ -472,7 +518,68 @@ int freeJSONMemory(char ** ppszJSONOut)
 	return 0;
 }
 
-int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {//	std::string & strJSONOut
+
+bool findRowForeground(Mat & mOrg, int row, int colStart, int colEnd)
+{
+	Mat mGray;
+	cvtColor(mOrg, mGray, CV_BGR2GRAY);
+#ifdef SAVE_IMAGE
+	imwrite("gray.png", mGray);
+#endif
+
+	int objThickThresh = 10;
+	int nObjLen = 0;
+	bool bForeground = false;
+	for (int i = colStart; i < colEnd; i++) {
+		if (mGray.at<unsigned char>(row, i) < 200) {
+			nObjLen++;
+			if (nObjLen >= objThickThresh) {
+				bForeground = true;
+				break;
+			}
+		}
+		else {
+			nObjLen = 0;
+		}
+	}
+
+	return bForeground;
+}
+
+// to remove the bottom garbage.
+cv::Mat cutBottomEdge(cv::Mat mOrg) {
+	int nGrayThresh = 10;
+	int nBagMinWidthThresh = 10;
+
+	cv::Mat m = mOrg(Rect(mOrg.cols / 3, 0, mOrg.cols / 3, mOrg.rows));
+	int rowEnd = m.rows - 1;
+	bool bForeground = false;
+	for (int i = 0; i < m.cols; i ++)
+	{
+		if (m.at<Vec3b>(rowEnd, i) != Vec3b(255, 255, 255))
+		{
+			bForeground = true;
+			break;
+		}
+	}
+
+	if (bForeground)
+	{
+		bForeground = false;
+		while (rowEnd > m.rows - 10 && !findRowForeground(m, rowEnd - 1, 0, m.cols)) {
+			rowEnd--;
+		}
+		if (rowEnd == m.rows - 10)
+		{
+			bForeground = false;
+		}
+		return bForeground ? mOrg : mOrg(Rect(0, 0, mOrg.cols, mOrg.rows - 60));
+	}
+
+	return mOrg;
+}
+
+int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {
 	if (NULL == pszJSONIn)
 	{
 		return -16;
@@ -481,10 +588,11 @@ int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {//	std::st
 	{
 		return -17;
 	}
-	int nImgStitchDirection;
+
+	IBCBConf conf = {};
 	std::vector<std::string > vecImagePath;
 	std::map<Point, std::string, PointComparer> mapBarcodes;
-	if (!parseBarcodeAndImagePathJSON(nImgStitchDirection, vecImagePath, mapBarcodes, pszJSONIn))
+	if (!parseBarcodeAndImagePathJSON(conf, vecImagePath, mapBarcodes, pszJSONIn))
 	{
 		return -1;
 	}
@@ -496,6 +604,10 @@ int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {//	std::st
 		{
 			return -2;
 		}
+
+		if (conf.bCutBottomNoise) {
+			m = cutBottomEdge(m);
+		}
 		vm.push_back(m);
 	}
 
@@ -505,8 +617,7 @@ int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {//	std::st
 		vp.push_back(iter->first);
 	}
 	std::map<Point, cv::Mat, PointComparer> mapBag;
-	bool bRet = splitImageBagAndBindBarCode(mapBag, vm, nImgStitchDirection, vp);
-
+	bool bRet = splitImageBagAndBindBarCode(mapBag, vm, conf.nImgStitchDirection, vp, conf.nBagIgnoreWidthLessThan);
 	std::map<std::string, std::pair<std::string, std::string>> mapBarcodeAndImgPath;
 	_mkdir(szDstImgDir);
 	if (! DirectoryExists(szDstImgDir))
@@ -514,33 +625,86 @@ int bindImageAndBarCode(const char * pszJSONIn, char ** ppszJSONOut) {//	std::st
 		return -3;
 	}
 
-	for (std::map<Point, cv::Mat, PointComparer>::iterator iter = mapBag.begin(); iter != mapBag.end(); ++iter)
+	if (!bRet)
 	{
-		Point pt = iter->first;
-		std::string strBarcode = mapBarcodes[pt];
-
-		SYSTEMTIME	curr_tm = {};
-		GetLocalTime(& curr_tm);
-		char szDate[_MAX_PATH] = {};
-		sprintf_s(szDate, _MAX_PATH, "%d-%02d-%02d", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay);
-
-		char szImgName[_MAX_PATH] = {};
-		sprintf_s(szImgName, _MAX_PATH, "sf_%d-%02d-%02d_%02d%02d%02d%03d_%d.png", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay, curr_tm.wHour, curr_tm.wMinute, curr_tm.wSecond, curr_tm.wMilliseconds, rand());
-		char szImgFullPath[256] = {};
-		sprintf_s(szImgFullPath, 256, "%s\\%s", szDstImgDir, szDate);
-		_mkdir(szImgFullPath);
-		if (!DirectoryExists(szDstImgDir))
+		if (0 == vecImagePath.size())
 		{
-			return -4;
+			return -10;
 		}
-		sprintf_s(szImgFullPath, 256, "%s\\%s\\%s", szDstImgDir, szDate, szImgName);
-		cv::Mat m = iter->second;
-		if (! imwrite(szImgFullPath, m))
+		else if (1 == vecImagePath.size())
 		{
-			return -5;
-		}
+			std::string imgFullPath = vecImagePath.at(0);
+			std::string imgName = imgFullPath.substr(imgFullPath.find_last_of("/\\") + 1);
 
-		mapBarcodeAndImgPath[strBarcode] = std::pair<std::string, std::string>(szImgName, szImgFullPath);
+			for (std::map<Point, cv::Mat, PointComparer>::iterator iter = mapBag.begin(); iter != mapBag.end(); ++iter)
+			{
+				Point pt = iter->first;
+				std::string strBarcode = mapBarcodes[pt];
+				mapBarcodeAndImgPath[strBarcode] = std::pair<std::string, std::string>(imgName, vecImagePath.at(0));
+			}
+		} 
+		else
+		{
+			SYSTEMTIME	curr_tm = {};
+			GetLocalTime(&curr_tm);
+			char szDate[_MAX_PATH] = {};
+			sprintf_s(szDate, _MAX_PATH, "%d-%02d-%02d", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay);
+
+			char szImgName[_MAX_PATH] = {};
+			sprintf_s(szImgName, _MAX_PATH, "sf_%d-%02d-%02d_%02d%02d%02d%03d_%d.png", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay, curr_tm.wHour, curr_tm.wMinute, curr_tm.wSecond, curr_tm.wMilliseconds, rand());
+			char szImgFullPath[256] = {};
+			sprintf_s(szImgFullPath, 256, "%s\\%s", szDstImgDir, szDate);
+			_mkdir(szImgFullPath);
+			if (!DirectoryExists(szDstImgDir))
+			{
+				return -4;
+			}
+			sprintf_s(szImgFullPath, 256, "%s\\%s\\%s", szDstImgDir, szDate, szImgName);
+			cv::Mat m = mapBag.begin()->second;
+			if (!imwrite(szImgFullPath, m))
+			{
+				return -5;
+			}
+
+			for (std::map<Point, cv::Mat, PointComparer>::iterator iter = mapBag.begin(); iter != mapBag.end(); ++iter)
+			{
+				Point pt = iter->first;
+				std::string strBarcode = mapBarcodes[pt];
+				mapBarcodeAndImgPath[strBarcode] = std::pair<std::string, std::string>(szImgName, szImgFullPath);
+			}
+		}
+	}
+	else
+	{
+		for (std::map<Point, cv::Mat, PointComparer>::iterator iter = mapBag.begin(); iter != mapBag.end(); ++iter)
+		{
+			Point pt = iter->first;
+			std::string strBarcode = mapBarcodes[pt];
+
+
+			SYSTEMTIME	curr_tm = {};
+			GetLocalTime(&curr_tm);
+			char szDate[_MAX_PATH] = {};
+			sprintf_s(szDate, _MAX_PATH, "%d-%02d-%02d", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay);
+
+			char szImgName[_MAX_PATH] = {};
+			sprintf_s(szImgName, _MAX_PATH, "sf_%d-%02d-%02d_%02d%02d%02d%03d_%d.png", curr_tm.wYear, curr_tm.wMonth, curr_tm.wDay, curr_tm.wHour, curr_tm.wMinute, curr_tm.wSecond, curr_tm.wMilliseconds, rand());
+			char szImgFullPath[256] = {};
+			sprintf_s(szImgFullPath, 256, "%s\\%s", szDstImgDir, szDate);
+			_mkdir(szImgFullPath);
+			if (!DirectoryExists(szDstImgDir))
+			{
+				return -4;
+			}
+			sprintf_s(szImgFullPath, 256, "%s\\%s\\%s", szDstImgDir, szDate, szImgName);
+			cv::Mat m = iter->second;
+			if (!imwrite(szImgFullPath, m))
+			{
+				return -5;
+			}
+
+			mapBarcodeAndImgPath[strBarcode] = std::pair<std::string, std::string>(szImgName, szImgFullPath);
+		}
 	}
 
 	std::string strJSONOut = outputBarcodeAndImgPathJSON(mapBarcodeAndImgPath);
