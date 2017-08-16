@@ -454,7 +454,7 @@ bool splitImageBagAndBindBarCode(std::map<Point, cv::Mat, PointComparer> & mapBa
 		return false;
 	}
 
-	std::sort(vp.begin(), vp.end(), [](cv::Point a, cv::Point b) -> bool {return a.y < b.y; });
+	std::sort(vp.begin(), vp.end(), [](cv::Point a, cv::Point b) -> bool {return a.x < b.x; });
 	for (size_t idx = 0; idx < min(vBags.size(), vp.size()); idx++) {
 		mapBag[vp.at(idx)] = vBags.at(idx);
 	}

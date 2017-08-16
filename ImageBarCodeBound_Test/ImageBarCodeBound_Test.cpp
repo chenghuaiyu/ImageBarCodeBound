@@ -211,12 +211,18 @@ int main(int argc, char * argv[]) {
 	//	"    ]"
 	//	"}";
 	//const char strTest[] = "{\"direction\":0,\"barcodes\":[{\"barcode\":\"339124620817T\",\"abscissa\":252,\"ordinate\":2275},{\"barcode\":\"950196023377\",\"abscissa\":322,\"ordinate\":2612}],\"images\":[{\"imageName\":\"20170427171715.jpg\",\"imagePath\":\"F:/images/Ë³·á/20170427/20170427171715.jpg\"}]}";
-	const char strTest[] = "{\"bagIgnoreWidthLessThan\":0,\"cutImageBottomNoise\":0,\"direction\":0,\"barcodes\":[{\"barcode\":\"950196023331\",\"abscissa\":366,\"ordinate\":2211},{\"barcode\":\"950196023386\",\"abscissa\":372,\"ordinate\":2421}],\"images\":[{\"imageName\":\"20170427174710.jpg\",\"imagePath\":\"F:/images/Ë³·á/20170427/20170427174710.jpg\"}]}";
-	//const char strTest[] = "";
+	//const char strTest[] = "{\"bagIgnoreWidthLessThan\":0,\"cutImageBottomNoise\":0,\"direction\":0,\"barcodes\":[{\"barcode\":\"950196023331\",\"abscissa\":366,\"ordinate\":2211},{\"barcode\":\"950196023386\",\"abscissa\":372,\"ordinate\":2421}],\"images\":[{\"imageName\":\"20170427174710.jpg\",\"imagePath\":\"F:/images/Ë³·á/20170427/20170427174710.jpg\"}]}";
+	//const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":715,\"ordinate\":2273},{\"barcode\":\"359074507818\",\"abscissa\":337,\"ordinate\":2452}],\"images\":[{\"imageName\":\"20170814170054.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170054.jpg\"}]}";
+	//const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":821,\"ordinate\":2320},{\"barcode\":\"359074507818\",\"abscissa\":245,\"ordinate\":2334}],\"images\":[{\"imageName\":\"20170814170240.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170240.jpg\"}]}";
+	const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":390,\"ordinate\":2344},{\"barcode\":\"359074507818\",\"abscissa\":787,\"ordinate\":2458}],\"images\":[{\"imageName\":\"20170814170325.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170325.jpg\"}]}";
 
-	const char json[] = "{\"direction\":0,\"barcodes\":[{\"barcode\":\"TX293203741QC\",\"abscissa\":738,\"ordinate\":1750},{\"barcode\":\"353426050960G\",\"abscissa\":526,\"ordinate\":2306}],\"images\":[{\"imageName\":\"20170425102856.jpg\",\"imagePath\":\"D:/resources/files/xrayPhotos/nodeal/20170425/20170425102856.jpg\"}]}";
+	//const char json[] = "{\"direction\":0,\"barcodes\":[{\"barcode\":\"TX293203741QC\",\"abscissa\":738,\"ordinate\":1750},{\"barcode\":\"353426050960G\",\"abscissa\":526,\"ordinate\":2306}],\"images\":[{\"imageName\":\"20170425102856.jpg\",\"imagePath\":\"D:/resources/files/xrayPhotos/nodeal/20170425/20170425102856.jpg\"}]}";
 	char * pszJSONOut;
 	int nRet = bindImageAndBarCode(strTest, &pszJSONOut);
+	if (0 != nRet) {
+		std::cout << "error";
+		return -1;
+	}
 	std::cout << pszJSONOut << std::endl;
 	freeJSONMemory(& pszJSONOut);
 	if (argc > 1)

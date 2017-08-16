@@ -1,0 +1,44 @@
+Java调用算法接口
+{
+    "direction": 0
+    "cutImageBottomNoise": 0,
+    "bagIgnoreWidthLessThan": 0,
+    "barcodes": [
+        {
+            "barcode": "1234567891",
+            "abscissa": 600,
+            "ordinate": 800
+        },
+        {
+            "barcode": "1234567892",
+            "abscissa": 700,
+            "ordinate": 900
+        }
+    ],
+    "images": [
+        {
+            "imageName": "aaa.png",
+            "imagePath": "D:/aaa.png"
+        },
+        {
+            "imageName": "bbb.png",
+            "imagePath": "D:/bbb.png"
+        }
+    ]
+}
+算法返回结果
+{
+    "status": "0",
+    "barcodes": [
+        {
+            "barcode": "1234567891",
+            "imageName": "ccc.png",
+            "imagePath": "D:/ccc.png"
+        },
+        {
+            "barcode": "1234567892",
+            "imageName": "ddd.png",
+            "imagePath": "D:/ddd.png"
+        }
+    ]
+}
