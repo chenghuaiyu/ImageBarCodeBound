@@ -439,7 +439,7 @@ bool splitImageBagAndBindBarCode(std::map<Point, cv::Mat, PointComparer> & mapBa
 	}
 #endif
 	if (nBagIgnoreWhenWidthLessThan > 0 && vBags.size() > vp.size()) {
-		for (size_t idx = vBags.size() -1; idx >= 0; idx--) {
+		for (int idx = (int)vBags.size() - 1; idx >= 0; idx--) {
 			if (vBags.at(idx).cols < nBagIgnoreWhenWidthLessThan) {
 				vBags.erase(vBags.begin() + idx);
 			}

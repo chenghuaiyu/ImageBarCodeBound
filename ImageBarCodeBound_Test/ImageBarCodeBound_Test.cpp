@@ -48,7 +48,7 @@ void SearchImageFiles(vector<string> & fileList, const char * pszImagePath, bool
 	{
 		if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 		{
-			int nLen = strlen(ffd.cFileName);
+			int nLen = (int)strlen(ffd.cFileName);
 			if (nLen >= 5)
 			{
 				char * pszExt = strrchr(ffd.cFileName, '.');
@@ -214,7 +214,9 @@ int main(int argc, char * argv[]) {
 	//const char strTest[] = "{\"bagIgnoreWidthLessThan\":0,\"cutImageBottomNoise\":0,\"direction\":0,\"barcodes\":[{\"barcode\":\"950196023331\",\"abscissa\":366,\"ordinate\":2211},{\"barcode\":\"950196023386\",\"abscissa\":372,\"ordinate\":2421}],\"images\":[{\"imageName\":\"20170427174710.jpg\",\"imagePath\":\"F:/images/Ë³·á/20170427/20170427174710.jpg\"}]}";
 	//const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":715,\"ordinate\":2273},{\"barcode\":\"359074507818\",\"abscissa\":337,\"ordinate\":2452}],\"images\":[{\"imageName\":\"20170814170054.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170054.jpg\"}]}";
 	//const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":821,\"ordinate\":2320},{\"barcode\":\"359074507818\",\"abscissa\":245,\"ordinate\":2334}],\"images\":[{\"imageName\":\"20170814170240.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170240.jpg\"}]}";
-	const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":390,\"ordinate\":2344},{\"barcode\":\"359074507818\",\"abscissa\":787,\"ordinate\":2458}],\"images\":[{\"imageName\":\"20170814170325.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170325.jpg\"}]}";
+	//const char strTest[] = "{\"direction\":0,\"cutImageBottomNoise\":1,\"bagIgnoreWidthLessThan\":40,\"barcodes\":[{\"barcode\":\"359074507775\",\"abscissa\":390,\"ordinate\":2344},{\"barcode\":\"359074507818\",\"abscissa\":787,\"ordinate\":2458}],\"images\":[{\"imageName\":\"20170814170325.jpg\",\"imagePath\":\"D:/SinoCloud/ImageBarCodeBound/samples//20170814170325.jpg\"}]}";
+	//const char strTest[] = "{\"direction\":0, \"cutImageBottomNoise\" : 1, \"bagIgnoreWidthLessThan\" : 40, \"barcodes\" : [{\"barcode\":\"359074507809\", \"abscissa\" : 687, \"ordinate\" : 29839}, { \"barcode\":\"359074507793\", \"abscissa\" : 228, \"ordinate\" : 29917 }], \"images\" : [{\"imageName\":\"20170823162813.jpg\", \"imagePath\" : \"D:/SinoCloud/ImageBarCodeBound/samples/20170823/20170823162813.jpg\"}, { \"imageName\":\"20170823162704.jpg\", \"imagePath\" : \"D:/SinoCloud/ImageBarCodeBound/samples/20170823/20170823162704.jpg\" }]}";
+	const char strTest[] = "{\"direction\":0, \"cutImageBottomNoise\" : 1, \"bagIgnoreWidthLessThan\" : 40, \"barcodes\" : [{\"barcode\":\"359074507818\", \"abscissa\" : 800, \"ordinate\" : 38453}, { \"barcode\":\"359074507809\", \"abscissa\" : 254, \"ordinate\" : 38517 }], \"images\" : [{\"imageName\":\"20170823170522.jpg\", \"imagePath\" : \"D:/SinoCloud/ImageBarCodeBound/samples/20170823/20170823170522.jpg\"}, { \"imageName\":\"20170823170352.jpg\", \"imagePath\" : \"D:/SinoCloud/ImageBarCodeBound/samples/20170823/20170823170352.jpg\" }]}";
 
 	//const char json[] = "{\"direction\":0,\"barcodes\":[{\"barcode\":\"TX293203741QC\",\"abscissa\":738,\"ordinate\":1750},{\"barcode\":\"353426050960G\",\"abscissa\":526,\"ordinate\":2306}],\"images\":[{\"imageName\":\"20170425102856.jpg\",\"imagePath\":\"D:/resources/files/xrayPhotos/nodeal/20170425/20170425102856.jpg\"}]}";
 	char * pszJSONOut;
