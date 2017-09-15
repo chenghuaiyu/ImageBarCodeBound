@@ -238,7 +238,7 @@ bool splitBags(std::vector<cv::Mat>& vecBags, cv::Mat m, int nImgMovDirection) {
 		//vecBags.push_back(m(rc));
 		//vecBagRect.push_back(rc);
 		//vecBagCenterPnt.push_back(Point(cX, cY));
-		int c = nImgMovDirection % 2 == 0 ? cX : cY;
+		int c = nImgMovDirection % 2 == 0 ? cY : cX;
 		vecPairCenter.push_back(std::pair<int, int>(c, vecPairCenter.size()));
 		//contourFiltered.push_back(contour);
 		
